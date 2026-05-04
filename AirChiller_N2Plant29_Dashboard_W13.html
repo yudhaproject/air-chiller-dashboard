@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Air Chiller N2 Plant #29 — Weekly Dashboard</title>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #5a5a56;
+    --text3: #9a9a94;
+    --red: #E24B4A;
+    --red-bg: #FCEBEB;
+    --red-text: #791F1F;
+    --amber: #BA7517;
+    --amber-bg: #FAEEDA;
+    --amber-text: #633806;
+    --green: #3B6D11;
+    --green-bg: #EAF3DE;
+    --green-text: #27500A;
+    --blue: #185FA5;
+    --blue-bg: #E6F1FB;
+    --blue-text: #0C447C;
+    --purple-bg: #EEEDFE;
+    --purple-text: #3C3489;
+    --gray-bg: #F1EFE8;
+    --gray-text: #5F5E5A;
+    --accent: #185FA5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-left h1 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .header-left p {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+  .header-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .week-chip {
+    font-size: 11px;
+    background: var(--blue-bg);
+    color: var(--blue-text);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .mom-chip {
+    font-size: 11px;
+    background: var(--gray-bg);
+    color: var(--gray-text);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem 2rem 3rem; }
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+    margin-top: 1.75rem;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+  }
+  /* Metrics */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 0.5rem;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+  }
+  .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+  .metric-val { font-size: 24px; font-weight: 600; letter-spacing: -0.03em; color: var(--text); }
+  .metric-val.danger { color: var(--red); }
+  .metric-val.warn { color: var(--amber); }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  /* Progress bar */
+  .progress-section {
+    margin-top: 1rem;
+  }
+  .prog-row { margin-bottom: 12px; }
+  .prog-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+  .prog-track { background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; }
+  .prog-fill { height: 8px; border-radius: 4px; transition: width 0.6s ease; }
+  .delay-note {
+    font-size: 12px;
+    color: var(--red-text);
+    background: var(--red-bg);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-top: 10px;
+  }
+  /* 2-col grid */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  /* Badges */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .badge.commented { background: var(--amber-bg); color: var(--amber-text); }
+  .badge.resubmit  { background: var(--green-bg); color: var(--green-text); }
+  .badge.pending   { background: var(--gray-bg);  color: var(--gray-text); }
+  .badge.delay     { background: var(--red-bg);   color: var(--red-text); }
+  .badge.inprog    { background: var(--blue-bg);  color: var(--blue-text); }
+  .badge.po        { background: var(--purple-bg); color: var(--purple-text); }
+  .badge.done      { background: var(--green-bg); color: var(--green-text); }
+  /* Doc list */
+  .doc-list { list-style: none; }
+  .doc-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .doc-item:last-child { border-bottom: none; }
+  .doc-id { font-size: 10px; color: var(--text3); margin-bottom: 1px; }
+  .doc-name-text { font-size: 12px; color: var(--text); }
+  .doc-right { text-align: right; flex-shrink: 0; }
+  .doc-date { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  /* Procurement */
+  .proc-list { list-style: none; }
+  .proc-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .proc-item:last-child { border-bottom: none; }
+  .proc-name { font-size: 13px; color: var(--text); margin-bottom: 3px; }
+  .proc-eta { font-size: 11px; color: var(--text3); text-align: right; }
+  /* Action items */
+  .action-list { list-style: none; }
+  .action-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .action-item:last-child { border-bottom: none; }
+  .action-no {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    min-width: 18px;
+    margin-top: 2px;
+  }
+  .action-title { font-size: 13px; color: var(--text); margin-bottom: 4px; }
+  .action-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .pic {
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--blue-bg);
+    color: var(--blue-text);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .due {
+    font-size: 11px;
+    color: var(--amber);
+  }
+  .due.urgent { color: var(--red); font-weight: 600; }
+  /* Status indicator dot */
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block; margin-right: 5px; vertical-align: middle;
+  }
+  .dot.red { background: var(--red); }
+  .dot.amber { background: var(--amber); }
+  .dot.green { background: var(--green); }
+  /* Footer */
+  .footer {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .update-info { display: flex; flex-direction: column; gap: 2px; }
+  /* Print */
+  @media print {
+    .header { position: static; }
+    body { background: white; }
+  }
+  /* Responsive */
+  @media (max-width: 700px) {
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid2 { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+    .header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Air Chiller N2 Plant #29 — Weekly Dashboard</h1>
+    <p>PT Badak NGL &nbsp;·&nbsp; PT Bhumi Phala Perkasa &nbsp;·&nbsp; PT Thermocool Indonesia</p>
+  </div>
+  <div class="header-right">
+    <span class="week-chip">20–26 Apr 2026</span>
+    <span class="mom-chip">MOM #13 &nbsp;·&nbsp; 30 Apr 2026</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Progress Overview -->
+  <div class="section-label">Progress overview</div>
+  <div class="card">
+    <div class="metric-grid" style="margin-bottom: 1.25rem;">
+      <div class="metric">
+        <div class="metric-label">Plan minggu ini</div>
+        <div class="metric-val">1.24<span style="font-size:14px;">%</span></div>
+        <div class="metric-sub">Weekly plan</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Actual minggu ini</div>
+        <div class="metric-val warn">0.56<span style="font-size:14px;">%</span></div>
+        <div class="metric-sub">Weekly actual</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Kumulatif plan</div>
+        <div class="metric-val">20.24<span style="font-size:14px;">%</span></div>
+        <div class="metric-sub">s/d 26 Apr 2026</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Kumulatif actual</div>
+        <div class="metric-val danger">10.12<span style="font-size:14px;">%</span></div>
+        <div class="metric-sub"><span class="badge delay">Delay 10.12%</span></div>
+      </div>
+    </div>
+
+    <div class="progress-section">
+      <div class="prog-row">
+        <div class="prog-header"><span>Plan kumulatif</span><span>20.24%</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:20.24%; background:#888780;"></div></div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-header"><span>Actual kumulatif</span><span>10.12%</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:10.12%; background:#E24B4A;"></div></div>
+      </div>
+      <div class="delay-note">
+        <strong>Root cause delay:</strong> Seharusnya sudah masuk fase fabrication sesuai schedule, tapi aktualnya masih di engineering, procurement, & fabrication secara bersamaan.
+      </div>
+    </div>
+  </div>
+
+  <!-- Docs + Procurement -->
+  <div class="grid2">
+    <div>
+      <div class="section-label">Engineering documents — outstanding</div>
+      <div class="card" style="padding: 0.75rem 1rem;">
+        <ul class="doc-list">
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-004</div><div class="doc-name-text">GA Drawing - Air Chiller Unit</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 02-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-006 / 007</div><div class="doc-name-text">Electrical Schematic & Load Schedule</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-008</div><div class="doc-name-text">I/O List - Chiller Control System</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-009</div><div class="doc-name-text">Control Logic Diagram</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-010</div><div class="doc-name-text">Instrument Datasheet - Temp & Pressure TX</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-011</div><div class="doc-name-text">Inspection & Test Plan - Fabrication</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-012</div><div class="doc-name-text">Operation Manual - N₂ Air Chiller</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-019</div><div class="doc-name-text">Drawing Instrument Wiring Schematic</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-021</div><div class="doc-name-text">Single Line Diagram</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-024 / 025</div><div class="doc-name-text">Control Panel Layout & Instrument List</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-027</div><div class="doc-name-text">Site Installation Procedures</div></div>
+            <div class="doc-right"><div class="badge commented">Commented</div><div class="doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="doc-item">
+            <div><div class="doc-id">TCI-ENG-AC60-013 / 020 / 022 / 023 / 026</div><div class="doc-name-text">Maint. Manual, BOM, Spec, Panel Layout, Cable</div></div>
+            <div class="doc-right"><div class="badge pending">Pending</div><div class="doc-date">Belum ada due date</div></div>
+          </li>
+        </ul>
+        <div style="margin-top:10px; font-size:11px; color:var(--text3);">Total outstanding: <strong style="color:var(--text);">12 dokumen</strong> &nbsp;·&nbsp; <strong style="color:var(--amber);">11 commented</strong> &nbsp;·&nbsp; <strong style="color:var(--gray-text);">1 pending</strong></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Procurement status</div>
+      <div class="card" style="padding: 0.75rem 1rem;">
+        <ul class="proc-list">
+          <li class="proc-item">
+            <div><div class="proc-name">Evaporator</div><span class="badge inprog">In Progress Fabrikasi</span></div>
+            <div class="proc-eta">ETA Jakarta<br><strong>25 Mei 2026</strong></div>
+          </li>
+          <li class="proc-item">
+            <div><div class="proc-name">Condenser</div><span class="badge inprog">In Progress Fabrikasi</span></div>
+            <div class="proc-eta">ETA Jakarta<br><strong>25 Mei 2026</strong></div>
+          </li>
+          <li class="proc-item">
+            <div><div class="proc-name">Heat Exchanger</div><span class="badge inprog">In Progress Fabrikasi</span></div>
+            <div class="proc-eta">ETA Jakarta<br><strong>25 Mei 2026</strong></div>
+          </li>
+          <li class="proc-item">
+            <div><div class="proc-name">Electric Motor</div><span class="badge inprog">In Progress Fabrikasi</span></div>
+            <div class="proc-eta">ETA Jakarta<br><strong>25 Jul 2026</strong></div>
+          </li>
+          <li class="proc-item">
+            <div><div class="proc-name">Compressor</div><span class="badge inprog">In Progress Fabrikasi</span></div>
+            <div class="proc-eta">ETA Jakarta<br><strong>25 Jul 2026</strong></div>
+          </li>
+          <li class="proc-item">
+            <div><div class="proc-name">Electrical & Instrument Material</div><span class="badge po">Proses PO</span></div>
+            <div class="proc-eta">ETA Jakarta<br><strong>14 Jul 2026</strong></div>
+          </li>
+          <li class="proc-item">
+            <div><div class="proc-name">PLC</div><span class="badge po">PO Minggu Depan</span></div>
+            <div class="proc-eta">Lead time<br><strong>8–10 weeks</strong></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section-label" style="margin-top:1.25rem;">Notes teknis</div>
+      <div class="card" style="padding:0.75rem 1rem; font-size:12px; color:var(--text2); line-height:1.7;">
+        <p>· Beban operasi package unit: <strong>statis 4 ton</strong>, dinamis <strong>5 ton</strong></p>
+        <p>· Foundation assessment: soil test sudah diterima 14 Apr 2026. Foundation calc sudah dikirim ke PT. Badak 22 Apr 2026. Pelaporan hasil test pondasi max <strong>13 Mei 2026</strong>.</p>
+        <p>· Sertifikasi <strong>COI Migas</strong> akan dilakukan oleh PT. Badak — BPP & TCI support kelengkapan dokumen.</p>
+        <p>· Material spec dikonfirmasi kembali ke SOR: <strong>non-hazardous area classification</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Items -->
+  <div class="section-label">Action items — follow-up sebelum 07 Mei 2026</div>
+  <div class="card" style="padding: 0.75rem 1.25rem;">
+    <ul class="action-list">
+      <li class="action-item">
+        <div class="action-no">01</div>
+        <div>
+          <div class="action-title">Re-submit semua dokumen engineering yang commented (11 dokumen)</div>
+          <div class="action-meta"><span class="pic">BPP & TCI</span><span class="due urgent">Due: 04 Mei 2026</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">02</div>
+        <div>
+          <div class="action-title">Submit dokumen kalkulasi, WPS, WPQ, PQR & laporan NDT untuk Evaporator, Condenser, Heat Exchanger</div>
+          <div class="action-meta"><span class="pic">BPP & TCI</span><span class="due urgent">Due: 02 Mei 2026</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">03</div>
+        <div>
+          <div class="action-title">Konfirmasi ke vendor: hydrotest 2x (shell side & tube side) untuk Evaporator, Condenser, HE</div>
+          <div class="action-meta"><span class="pic">BPP & TCI</span><span class="due">ASAP</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">04</div>
+        <div>
+          <div class="action-title">Revisi & submit TRA (Task Risk Assessment) — saat ini sedang direvisi BPP</div>
+          <div class="action-meta"><span class="pic">BPP</span><span class="due urgent">Due: 06 Mei 2026</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">05</div>
+        <div>
+          <div class="action-title">Submit revisi master schedule (re-baseline)</div>
+          <div class="action-meta"><span class="pic">BPP</span><span class="due urgent">Due: 05 Mei 2026</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">06</div>
+        <div>
+          <div class="action-title">Serahkan mill certificate & COO material utama ke PT. Badak</div>
+          <div class="action-meta"><span class="pic">BPP & TCI</span><span class="due">ASAP</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">07</div>
+        <div>
+          <div class="action-title">Submit hasil perhitungan desain pondasi untuk review bersama team civil PT. Badak — TRA test beton harus disiapkan & didetailkan</div>
+          <div class="action-meta"><span class="pic">BPP & TCI</span><span class="due">Due: 13 Mei 2026</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">08</div>
+        <div>
+          <div class="action-title">Pastikan PSV memiliki test certificate dari manufacturer</div>
+          <div class="action-meta"><span class="pic">BPP & TCI</span><span class="due">ASAP</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">09</div>
+        <div>
+          <div class="action-title">PT. Badak kirim dokumen standar spesifikasi painting ke BPP/TCI</div>
+          <div class="action-meta"><span class="pic">PT. Badak</span><span class="due">ASAP</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">10</div>
+        <div>
+          <div class="action-title">Konfirmasi material specification sesuai SOR — non-hazardous area classification</div>
+          <div class="action-meta"><span class="pic">BPP & TCI</span><span class="due">ASAP</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">11</div>
+        <div>
+          <div class="action-title">Support proses sertifikasi COI Migas untuk Air Chiller package unit</div>
+          <div class="action-meta"><span class="pic">BPP & TCI</span><span class="due">Ongoing</span></div>
+        </div>
+      </li>
+      <li class="action-item">
+        <div class="action-no">12</div>
+        <div>
+          <div class="action-title">Next weekly meeting — Kamis 07 Mei 2026, 09.00 WIB / 10.00 WITA</div>
+          <div class="action-meta"><span class="pic">All</span></div>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <div class="update-info">
+      <span>Generated from MOM No. 77138-PRJ-MOM13-IV-26</span>
+      <span>Rapat Koordinasi Mingguan — 30 April 2026</span>
+    </div>
+    <div style="text-align:right;">
+      <span>Approved by: Ferri Yohannes, Manager Project</span><br>
+      <span>Recorded by: Edy Aristyawan &nbsp;·&nbsp; PT. Bhumi Phala Perkasa</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
