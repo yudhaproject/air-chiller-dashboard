@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VDRL Dashboard — Chiller Plant 29B</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #1f2937;
+    --border: #30363d; --text: #e6edf3; --muted: #7d8590;
+    --green: #3fb950; --green-bg: #0f2a1a;
+    --red: #f85149; --red-bg: #2a0f0f;
+    --yellow: #e3b341; --yellow-bg: #2a1f00;
+    --blue: #58a6ff; --blue-bg: #0d1f38;
+    --gray: #8b949e; --gray-bg: #1c2128;
+    --orange: #f0883e; --orange-bg: #2a1500;
+    --purple: #bc8cff; --purple-bg: #1a0e2a;
+    --teal: #39d3c8; --teal-bg: #062222;
+    --accent: #58a6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 28px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .header-left h1 { font-size: 17px; font-weight: 700; }
+  .header-left .subtitle { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: 'IBM Plex Mono', monospace; }
+  .header-right { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; text-align: right; line-height: 1.7; }
+  .header-right span { color: var(--text); }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 28px; }
+  .tab { padding: 12px 20px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* KPIs */
+  .kpi-row { display: flex; gap: 10px; padding: 18px 28px; flex-wrap: wrap; }
+  .kpi { flex: 1; min-width: 120px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; cursor: pointer; transition: transform .15s; }
+  .kpi:hover { transform: translateY(-2px); }
+  .kpi-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 5px; }
+  .kpi-value { font-size: 28px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
+  .kpi-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .kpi.overdue { border-left: 3px solid var(--red); } .kpi.overdue .kpi-value { color: var(--red); }
+  .kpi.duesoon { border-left: 3px solid var(--yellow); } .kpi.duesoon .kpi-value { color: var(--yellow); }
+  .kpi.approved { border-left: 3px solid var(--green); } .kpi.approved .kpi-value { color: var(--green); }
+  .kpi.commented { border-left: 3px solid var(--orange); } .kpi.commented .kpi-value { color: var(--orange); }
+  .kpi.total { border-left: 3px solid var(--blue); } .kpi.total .kpi-value { color: var(--blue); }
+
+  /* Toolbar */
+  .toolbar { padding: 0 28px 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .toolbar input { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; padding: 6px 11px; width: 240px; outline: none; transition: border-color .2s; }
+  .toolbar input:focus { border-color: var(--accent); }
+  .toolbar input::placeholder { color: var(--muted); }
+  .filter-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; font-weight: 600; padding: 6px 12px; cursor: pointer; transition: all .15s; text-transform: uppercase; letter-spacing: .5px; }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .toolbar-right { margin-left: auto; font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+
+  /* Table */
+  .table-wrap { padding: 0 28px 24px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 950px; }
+  thead th { background: var(--surface); border-bottom: 2px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; padding: 9px 10px; text-align: left; white-space: nowrap; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 10; }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 9px 10px; vertical-align: middle; font-size: 12px; }
+  td.no { color: var(--muted); font-family: 'IBM Plex Mono', monospace; width: 32px; }
+  td.doc-id { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); white-space: nowrap; }
+  td.title { max-width: 260px; line-height: 1.4; }
+  td.date { font-family: 'IBM Plex Mono', monospace; font-size: 11px; white-space: nowrap; }
+  td.date.overdue-date { color: var(--red); }
+  td.date.duesoon-date { color: var(--yellow); }
+  .badge { display: inline-block; border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+  .badge.approved { background: var(--green-bg); color: var(--green); }
+  .badge.commented { background: var(--yellow-bg); color: var(--yellow); }
+  .badge.information { background: var(--blue-bg); color: var(--blue); }
+  .badge.not-submitted { background: var(--gray-bg); color: var(--gray); }
+  .badge.approved-noted { background: #1a2a1a; color: #6dd08c; }
+  .due-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+  .due-pill.overdue { background: var(--red-bg); color: var(--red); }
+  .due-pill.due-soon { background: var(--yellow-bg); color: var(--yellow); }
+  .due-pill.on-track { background: var(--green-bg); color: var(--green); }
+  .due-pill.upcoming { background: var(--gray-bg); color: var(--gray); }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .pic-badge { display: inline-block; border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+  .pic-MECH { background: #1a2a1a; color: var(--teal); }
+  .pic-PROC { background: var(--blue-bg); color: var(--blue); }
+  .pic-ELEC { background: var(--yellow-bg); color: var(--yellow); }
+  .pic-INST { background: var(--purple-bg); color: var(--purple); }
+  .pic-OTH  { background: var(--gray-bg); color: var(--gray); }
+  .empty-row td { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+  /* Panel visibility */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* MOM Panel */
+  .mom-wrap { padding: 0 28px 40px; }
+  .mom-header-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .mom-title { font-size: 15px; font-weight: 700; }
+  .mom-sub { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: 'IBM Plex Mono', monospace; }
+  .mom-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .mom-chip { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
+  .mom-chip-blue   { background: var(--blue-bg);   color: var(--blue); }
+  .mom-chip-gray   { background: var(--gray-bg);   color: var(--gray); }
+  .mom-chip-red    { background: var(--red-bg);    color: var(--red); font-weight: 700; }
+
+  .mom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 760px) { .mom-grid { grid-template-columns: 1fr; } }
+
+  .mom-section-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .mom-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+
+  /* progress metrics */
+  .mom-metric-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 14px; }
+  @media (max-width: 760px) { .mom-metric-grid { grid-template-columns: repeat(2,1fr); } }
+  .mom-metric { background: var(--surface2); border-radius: 8px; padding: 10px 14px; }
+  .mom-metric-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .mom-metric-val { font-size: 24px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
+  .mom-metric-val sup { font-size: 12px; font-weight: 500; }
+  .mom-metric-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .mom-metric-val.warn   { color: var(--yellow); }
+  .mom-metric-val.danger { color: var(--red); }
+
+  .mom-prog-row { margin-bottom: 9px; }
+  .mom-prog-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .mom-prog-track { background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; }
+  .mom-prog-fill { height: 100%; border-radius: 4px; }
+  .mom-delay-banner { background: var(--red-bg); color: var(--red); border-radius: 6px; padding: 8px 12px; font-size: 12px; margin-top: 10px; border-left: 3px solid var(--red); line-height: 1.6; }
+  .mom-delay-banner strong { color: var(--red); }
+
+  /* doc list */
+  .mom-doc-list { list-style: none; }
+  .mom-doc-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+  .mom-doc-item:last-child { border-bottom: none; }
+  .mom-doc-id { font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .mom-doc-name { font-size: 12px; color: var(--text); margin-top: 1px; }
+  .mom-doc-right { text-align: right; flex-shrink: 0; }
+  .mom-doc-date { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .mom-doc-summary { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+
+  /* procurement */
+  .mom-proc-list { list-style: none; }
+  .mom-proc-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .mom-proc-item:last-child { border-bottom: none; }
+  .mom-proc-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .mom-proc-eta { font-size: 11px; color: var(--muted); text-align: right; }
+  .mom-proc-eta strong { color: var(--text); }
+
+  /* technical notes */
+  .mom-note-list { list-style: none; }
+  .mom-note-list li { padding: 5px 0; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); line-height: 1.6; }
+  .mom-note-list li:last-child { border-bottom: none; }
+  .mom-note-list li::before { content: "·  "; color: var(--border); }
+  .mom-note-list li strong { color: var(--text); }
+
+  /* action items */
+  .mom-action-list { list-style: none; }
+  .mom-action-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .mom-action-item:last-child { border-bottom: none; }
+  .mom-action-no { font-size: 11px; font-weight: 700; color: var(--muted); min-width: 22px; margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+  .mom-action-title { font-size: 13px; color: var(--text); margin-bottom: 6px; line-height: 1.45; }
+  .mom-action-meta { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .mom-pic { font-size: 10px; font-weight: 700; background: var(--blue-bg); color: var(--blue); padding: 2px 8px; border-radius: 4px; }
+  .mom-due { font-size: 11px; color: var(--yellow); font-weight: 600; }
+  .mom-due.urgent  { color: var(--red); }
+  .mom-due.ongoing { color: var(--muted); font-weight: 400; }
+
+  /* mom badges */
+  .mb { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  .mb-commented { background: var(--yellow-bg); color: var(--yellow); }
+  .mb-pending   { background: var(--gray-bg);   color: var(--gray); }
+  .mb-delay     { background: var(--red-bg);    color: var(--red); }
+  .mb-inprog    { background: var(--blue-bg);   color: var(--blue); }
+  .mb-po        { background: var(--purple-bg); color: var(--purple); }
+  .mb-done      { background: var(--green-bg);  color: var(--green); }
+
+  /* mom footer */
+  .mom-footer { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; font-size: 11px; color: var(--muted); gap: 16px; flex-wrap: wrap; }
+  .mom-footer strong { color: var(--text); }
+  .gantt-controls { display: flex; gap: 8px; align-items: center; padding: 0 28px 12px; flex-wrap: wrap; }
+  .gantt-controls select { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; padding: 6px 10px; outline: none; }
+  .gantt-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 28px 12px; }
+  .gl-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .gl-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  #ganttCanvas { background: var(--surface); border-radius: 8px; border: 1px solid var(--border); display: block; }
+
+  /* Progress bar */
+  .progress-section { padding: 0 28px 24px; }
+  .prog-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px; }
+  .disc-rows { display: grid; gap: 8px; }
+  .disc-row { display: flex; align-items: center; gap: 10px; }
+  .disc-name { font-size: 12px; min-width: 160px; color: var(--muted); }
+  .disc-bar-bg { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; height: 12px; overflow: hidden; }
+  .disc-bar-fill { height: 100%; border-radius: 4px; transition: width .5s; }
+  .disc-pct { font-size: 11px; font-family: 'IBM Plex Mono', monospace; min-width: 36px; text-align: right; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>📋 VDRL Status Dashboard</h1>
+    <div class="subtitle">Replacement of Air Chiller Unit — Nitrogen Plant 29B, 29-V-21</div>
+  </div>
+  <div class="header-right">
+    <span>Client:</span> PT BADAK LNG &nbsp;|&nbsp; <span>Contractor:</span> PT BHUMI PHALA PERKASA<br>
+    <span>Sub Con:</span> PT THERMOCOOL INDONESIA &nbsp;|&nbsp; <span>Location:</span> BONTANG KALTIM<br>
+    <span>Project No:</span> 77138 &nbsp;|&nbsp; <span>Contract:</span> CA-24040 &nbsp;|&nbsp; <span>As of:</span> 06 May 2026
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('table')">📄 Document Table</div>
+  <div class="tab" onclick="switchTab('gantt')">📅 Gantt Chart</div>
+  <div class="tab" onclick="switchTab('mom')">🗒️ Minute of Meeting</div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi total"    onclick="filterKPI('all')"><div class="kpi-label">Total Docs</div><div class="kpi-value" id="cnt-total">41</div><div class="kpi-sub">All VDRL items</div></div>
+  <div class="kpi overdue"  onclick="filterKPI('overdue')"><div class="kpi-label">🔴 Overdue</div><div class="kpi-value" id="cnt-overdue">—</div><div class="kpi-sub">Past plan, unresolved</div></div>
+  <div class="kpi duesoon"  onclick="filterKPI('duesoon')"><div class="kpi-label">🟡 Due Soon</div><div class="kpi-value" id="cnt-duesoon">—</div><div class="kpi-sub">Within 14 days</div></div>
+  <div class="kpi approved" onclick="filterKPI('approved')"><div class="kpi-label">🟢 Approved</div><div class="kpi-value" id="cnt-approved">—</div><div class="kpi-sub">Fully resolved</div></div>
+  <div class="kpi commented" onclick="filterKPI('commented')"><div class="kpi-label">🟠 Commented</div><div class="kpi-value" id="cnt-commented">—</div><div class="kpi-sub">Needs resubmission</div></div>
+</div>
+
+<!-- TABLE PANEL -->
+<div class="panel active" id="panel-table">
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="Search title or doc ID…" oninput="applyFilters()">
+    <button class="filter-btn active" onclick="filterKPI('all')" id="btn-all">All</button>
+    <button class="filter-btn" onclick="filterKPI('overdue')" id="btn-overdue">Overdue</button>
+    <button class="filter-btn" onclick="filterKPI('duesoon')" id="btn-duesoon">Due Soon</button>
+    <button class="filter-btn" onclick="filterKPI('approved')" id="btn-approved">Approved</button>
+    <button class="filter-btn" onclick="filterKPI('commented')" id="btn-commented">Commented</button>
+    <button class="filter-btn" onclick="filterKPI('notsubmitted')" id="btn-notsubmitted">Not Submitted</button>
+    <button class="filter-btn" onclick="filterKPI('MECH')" id="btn-MECH">Mechanical</button>
+    <button class="filter-btn" onclick="filterKPI('PROC')" id="btn-PROC">Process</button>
+    <button class="filter-btn" onclick="filterKPI('ELEC')" id="btn-ELEC">Electrical</button>
+    <button class="filter-btn" onclick="filterKPI('INST')" id="btn-INST">Instrument</button>
+    <div class="toolbar-right" id="rowCount"></div>
+  </div>
+  <div class="table-wrap">
+    <table id="vdrlTable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">No ↕</th>
+          <th onclick="sortTable(1)">Doc ID</th>
+          <th onclick="sortTable(2)">Document Title ↕</th>
+          <th onclick="sortTable(3)">Plan Date ↕</th>
+          <th onclick="sortTable(4)">Last Submitted ↕</th>
+          <th onclick="sortTable(5)">Status ↕</th>
+          <th onclick="sortTable(6)">Due / Timeline ↕</th>
+          <th onclick="sortTable(7)">PIC / Discipline ↕</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- GANTT PANEL -->
+<div class="panel" id="panel-gantt">
+  <div class="gantt-controls">
+    <label style="font-size:12px;color:var(--muted);">Filter discipline:</label>
+    <select id="ganttDisc" onchange="drawGantt()">
+      <option value="all">All disciplines</option>
+      <option value="MECH">Mechanical Engineer</option>
+      <option value="PROC">Process Engineer</option>
+      <option value="ELEC">Electrical Engineer</option>
+      <option value="INST">Instrument Engineer</option>
+      <option value="OTH">Others</option>
+    </select>
+    <label style="font-size:12px;color:var(--muted);margin-left:8px;">Filter status:</label>
+    <select id="ganttStatus" onchange="drawGantt()">
+      <option value="all">All statuses</option>
+      <option value="overdue">Overdue only</option>
+      <option value="due-soon">Due soon only</option>
+      <option value="approved">Approved only</option>
+    </select>
+  </div>
+  <div class="gantt-legend">
+    <div class="gl-item"><div class="gl-dot" style="background:#3fb950"></div> Approved</div>
+    <div class="gl-item"><div class="gl-dot" style="background:#f0883e"></div> Commented</div>
+    <div class="gl-item"><div class="gl-dot" style="background:#58a6ff"></div> Information</div>
+    <div class="gl-item"><div class="gl-dot" style="background:#f85149"></div> Overdue / Not Submitted</div>
+    <div class="gl-item"><div class="gl-dot" style="background:#7d8590"></div> Upcoming</div>
+    <div class="gl-item"><div class="gl-dot" style="background:rgba(255,255,255,0.15);border:1px solid #555"></div> Plan window</div>
+    <div class="gl-item">│ <span style="margin-left:4px">Today line</span></div>
+  </div>
+  <div class="gantt-wrap">
+    <canvas id="ganttCanvas" role="img" aria-label="Gantt chart showing VDRL document submission plan and progress"></canvas>
+  </div>
+
+  <div class="progress-section" style="margin-top:20px;">
+    <div class="prog-title">Approval Progress by Discipline</div>
+    <div class="disc-rows" id="discProgress"></div>
+  </div>
+</div>
+
+<!-- MOM PANEL -->
+<div class="panel" id="panel-mom">
+<div class="mom-wrap">
+
+  <!-- MOM Header -->
+  <div class="mom-header-bar">
+    <div>
+      <div class="mom-title">Air Chiller N2 Plant #29 — Weekly Dashboard</div>
+      <div class="mom-sub">PT Badak NGL · PT Bhumi Phala Perkasa · PT Thermocool Indonesia</div>
+    </div>
+    <div class="mom-chips">
+      <span class="mom-chip mom-chip-blue">20–26 Apr 2026</span>
+      <span class="mom-chip mom-chip-gray">MOM #13 · 30 Apr 2026</span>
+      <span class="mom-chip mom-chip-red">⚠ Delay 10.12%</span>
+    </div>
+  </div>
+
+  <!-- Progress Overview -->
+  <div class="mom-section-label">Progress Overview</div>
+  <div class="mom-card" style="margin-bottom:16px;">
+    <div class="mom-metric-grid">
+      <div class="mom-metric"><div class="mom-metric-label">Plan Minggu Ini</div><div class="mom-metric-val">1.24<sup>%</sup></div><div class="mom-metric-sub">Weekly plan</div></div>
+      <div class="mom-metric"><div class="mom-metric-label">Actual Minggu Ini</div><div class="mom-metric-val warn">0.56<sup>%</sup></div><div class="mom-metric-sub">Weekly actual</div></div>
+      <div class="mom-metric"><div class="mom-metric-label">Kumulatif Plan</div><div class="mom-metric-val">20.24<sup>%</sup></div><div class="mom-metric-sub">s/d 26 Apr 2026</div></div>
+      <div class="mom-metric"><div class="mom-metric-label">Kumulatif Actual</div><div class="mom-metric-val danger">10.12<sup>%</sup></div><div class="mom-metric-sub"><span class="mb mb-delay">Delay 10.12%</span></div></div>
+    </div>
+    <div class="mom-prog-row">
+      <div class="mom-prog-header"><span>Kumulatif Plan</span><span>20.24%</span></div>
+      <div class="mom-prog-track"><div class="mom-prog-fill" style="width:20.24%;background:var(--muted);"></div></div>
+    </div>
+    <div class="mom-prog-row">
+      <div class="mom-prog-header"><span>Kumulatif Actual</span><span>10.12%</span></div>
+      <div class="mom-prog-track"><div class="mom-prog-fill" style="width:10.12%;background:var(--red);"></div></div>
+    </div>
+    <div class="mom-delay-banner">
+      <strong>Root Cause Delay:</strong> Seharusnya sudah masuk fase <em>fabrication</em> sesuai schedule, tapi aktualnya masih di <em>engineering, procurement, &amp; fabrication</em> secara bersamaan.
+    </div>
+  </div>
+
+  <!-- Docs + Procurement -->
+  <div class="mom-grid">
+    <!-- Engineering Docs -->
+    <div>
+      <div class="mom-section-label">Engineering Documents — Outstanding</div>
+      <div class="mom-card">
+        <ul class="mom-doc-list">
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-004</div><div class="mom-doc-name">GA Drawing — Air Chiller Unit</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 02-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-006 / 007</div><div class="mom-doc-name">Electrical Schematic &amp; Load Schedule</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-008</div><div class="mom-doc-name">I/O List — Chiller Control System</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-009</div><div class="mom-doc-name">Control Logic Diagram</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-010</div><div class="mom-doc-name">Instrument Datasheet — Temp &amp; Pressure TX</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-011</div><div class="mom-doc-name">Inspection &amp; Test Plan — Fabrication</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-012</div><div class="mom-doc-name">Operation Manual — N₂ Air Chiller</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-019</div><div class="mom-doc-name">Drawing Instrument Wiring Schematic</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-021</div><div class="mom-doc-name">Single Line Diagram</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-024 / 025</div><div class="mom-doc-name">Control Panel Layout &amp; Instrument List</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-027</div><div class="mom-doc-name">Site Installation Procedures</div></div>
+            <div class="mom-doc-right"><span class="mb mb-commented">Commented</span><div class="mom-doc-date">Re-submit 04-05-26</div></div>
+          </li>
+          <li class="mom-doc-item">
+            <div><div class="mom-doc-id">TCI-ENG-AC60-013 / 020 / 022 / 023 / 026</div><div class="mom-doc-name">Maint. Manual, BOM, Spec, Panel Layout, Cable</div></div>
+            <div class="mom-doc-right"><span class="mb mb-pending">Pending</span><div class="mom-doc-date">Belum ada due date</div></div>
+          </li>
+        </ul>
+        <div class="mom-doc-summary">Total outstanding: <strong style="color:var(--text)">12 dokumen</strong> &nbsp;·&nbsp; <strong style="color:var(--yellow)">11 commented</strong> &nbsp;·&nbsp; <strong style="color:var(--gray)">1 pending</strong></div>
+      </div>
+    </div>
+
+    <!-- Procurement + Notes -->
+    <div>
+      <div class="mom-section-label">Procurement Status</div>
+      <div class="mom-card" style="margin-bottom:14px;">
+        <ul class="mom-proc-list">
+          <li class="mom-proc-item">
+            <div><div class="mom-proc-name">Evaporator</div><span class="mb mb-inprog">In Progress Fabrikasi</span></div>
+            <div class="mom-proc-eta">ETA Jakarta<br><strong>25 Mei 2026</strong></div>
+          </li>
+          <li class="mom-proc-item">
+            <div><div class="mom-proc-name">Condenser</div><span class="mb mb-inprog">In Progress Fabrikasi</span></div>
+            <div class="mom-proc-eta">ETA Jakarta<br><strong>25 Mei 2026</strong></div>
+          </li>
+          <li class="mom-proc-item">
+            <div><div class="mom-proc-name">Heat Exchanger</div><span class="mb mb-inprog">In Progress Fabrikasi</span></div>
+            <div class="mom-proc-eta">ETA Jakarta<br><strong>25 Mei 2026</strong></div>
+          </li>
+          <li class="mom-proc-item">
+            <div><div class="mom-proc-name">Electric Motor</div><span class="mb mb-inprog">In Progress Fabrikasi</span></div>
+            <div class="mom-proc-eta">ETA Jakarta<br><strong>25 Jul 2026</strong></div>
+          </li>
+          <li class="mom-proc-item">
+            <div><div class="mom-proc-name">Compressor</div><span class="mb mb-inprog">In Progress Fabrikasi</span></div>
+            <div class="mom-proc-eta">ETA Jakarta<br><strong>25 Jul 2026</strong></div>
+          </li>
+          <li class="mom-proc-item">
+            <div><div class="mom-proc-name">Electrical &amp; Instrument Material</div><span class="mb mb-po">Proses PO</span></div>
+            <div class="mom-proc-eta">ETA Jakarta<br><strong>14 Jul 2026</strong></div>
+          </li>
+          <li class="mom-proc-item">
+            <div><div class="mom-proc-name">PLC</div><span class="mb mb-po">PO Minggu Depan</span></div>
+            <div class="mom-proc-eta">Lead time<br><strong>8–10 weeks</strong></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="mom-section-label">Catatan Teknis</div>
+      <div class="mom-card">
+        <ul class="mom-note-list">
+          <li>Beban operasi package unit: <strong>statis 4 ton</strong>, dinamis <strong>5 ton</strong></li>
+          <li>Foundation assessment: soil test diterima <strong>14 Apr 2026</strong>. Foundation calc dikirim ke PT. Badak <strong>22 Apr 2026</strong>. Pelaporan hasil test pondasi maks <strong>13 Mei 2026</strong>.</li>
+          <li>Sertifikasi <strong>COI Migas</strong> dilakukan oleh PT. Badak — BPP &amp; TCI support kelengkapan dokumen.</li>
+          <li>Material spec dikonfirmasi kembali ke SOR: <strong>non-hazardous area classification</strong>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Items -->
+  <div class="mom-section-label">Action Items — Follow-up Sebelum 07 Mei 2026</div>
+  <div class="mom-card">
+    <ul class="mom-action-list">
+      <li class="mom-action-item"><div class="mom-action-no">01</div><div><div class="mom-action-title">Re-submit semua dokumen engineering yang commented (11 dokumen)</div><div class="mom-action-meta"><span class="mom-pic">BPP &amp; TCI</span><span class="mom-due urgent">Due: 04 Mei 2026</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">02</div><div><div class="mom-action-title">Submit dokumen kalkulasi, WPS, WPQ, PQR &amp; laporan NDT untuk Evaporator, Condenser, Heat Exchanger</div><div class="mom-action-meta"><span class="mom-pic">BPP &amp; TCI</span><span class="mom-due urgent">Due: 02 Mei 2026</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">03</div><div><div class="mom-action-title">Konfirmasi ke vendor: hydrotest 2× (shell side &amp; tube side) untuk Evaporator, Condenser, HE</div><div class="mom-action-meta"><span class="mom-pic">BPP &amp; TCI</span><span class="mom-due">ASAP</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">04</div><div><div class="mom-action-title">Revisi &amp; submit TRA (Task Risk Assessment) — saat ini sedang direvisi BPP</div><div class="mom-action-meta"><span class="mom-pic">BPP</span><span class="mom-due urgent">Due: 06 Mei 2026</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">05</div><div><div class="mom-action-title">Submit revisi master schedule (re-baseline)</div><div class="mom-action-meta"><span class="mom-pic">BPP</span><span class="mom-due urgent">Due: 05 Mei 2026</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">06</div><div><div class="mom-action-title">Serahkan mill certificate &amp; COO material utama ke PT. Badak</div><div class="mom-action-meta"><span class="mom-pic">BPP &amp; TCI</span><span class="mom-due">ASAP</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">07</div><div><div class="mom-action-title">Submit hasil perhitungan desain pondasi untuk review bersama team civil PT. Badak — TRA test beton harus disiapkan &amp; didetailkan</div><div class="mom-action-meta"><span class="mom-pic">BPP &amp; TCI</span><span class="mom-due">Due: 13 Mei 2026</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">08</div><div><div class="mom-action-title">Pastikan PSV memiliki test certificate dari manufacturer</div><div class="mom-action-meta"><span class="mom-pic">BPP &amp; TCI</span><span class="mom-due">ASAP</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">09</div><div><div class="mom-action-title">PT. Badak kirim dokumen standar spesifikasi painting ke BPP / TCI</div><div class="mom-action-meta"><span class="mom-pic">PT. Badak</span><span class="mom-due">ASAP</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">10</div><div><div class="mom-action-title">Konfirmasi material specification sesuai SOR — non-hazardous area classification</div><div class="mom-action-meta"><span class="mom-pic">BPP &amp; TCI</span><span class="mom-due">ASAP</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">11</div><div><div class="mom-action-title">Support proses sertifikasi COI Migas untuk Air Chiller package unit</div><div class="mom-action-meta"><span class="mom-pic">BPP &amp; TCI</span><span class="mom-due ongoing">Ongoing</span></div></div></li>
+      <li class="mom-action-item"><div class="mom-action-no">12</div><div><div class="mom-action-title">Next weekly meeting — Kamis 07 Mei 2026, 09.00 WIB / 10.00 WITA</div><div class="mom-action-meta"><span class="mom-pic">All</span></div></div></li>
+    </ul>
+  </div>
+
+  <!-- MOM Footer -->
+  <div class="mom-footer">
+    <div>
+      <div>Generated from MOM No. <strong>77138-PRJ-MOM13-IV-26</strong></div>
+      <div style="margin-top:2px;">Rapat Koordinasi Mingguan — 30 April 2026</div>
+    </div>
+    <div style="text-align:right;">
+      <div>Approved by: <strong>Ferri Yohannes</strong>, Manager Project</div>
+      <div style="margin-top:2px;">Recorded by: Edy Aristyawan &nbsp;·&nbsp; PT. Bhumi Phala Perkasa</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const records = [
+  {no:1,  doc:'TCI-ENG-AC60-001',     title:'Cooling Capacity Calculation – N₂ Chiller',                  plan:'2025-12-20', lastSub:'2026-02-10', status:'Approved',      due:'on-track',  pic:'PROC'},
+  {no:2,  doc:'TCI-ENG-AC60-002-001', title:'HVAC Design Calculation (HYSYS)',                             plan:'2025-12-20', lastSub:'2026-01-26', status:'Approved',      due:'on-track',  pic:'PROC'},
+  {no:3,  doc:'TCI-ENG-AC60-002-002', title:'Evaporator Design Calculation (HTRI)',                        plan:'2025-12-20', lastSub:'2026-01-26', status:'Approved',      due:'on-track',  pic:'MECH'},
+  {no:4,  doc:'TCI-ENG-AC60-002-003', title:'Condenser Design Calculation (HTRI)',                         plan:'2025-12-20', lastSub:'2026-01-26', status:'Approved',      due:'on-track',  pic:'MECH'},
+  {no:5,  doc:'TCI-ENG-AC60-003',     title:'P&ID – N₂ Chiller System',                                   plan:'2025-12-20', lastSub:'2026-03-05', status:'Approved',      due:'on-track',  pic:'PROC'},
+  {no:6,  doc:'TCI-ENG-AC60-004',     title:'General Arrangement Drawing – Air Chiller Unit',             plan:'2025-12-20', lastSub:'2026-05-05', status:'Commented',     due:'overdue',   pic:'MECH'},
+  {no:7,  doc:'TCI-ENG-AC60-005',     title:'Equipment Datasheet – Air Chiller Package',                  plan:'2025-12-20', lastSub:'2026-03-31', status:'Commented',     due:'overdue',   pic:'MECH'},
+  {no:8,  doc:'TCI-ENG-AC60-006',     title:'Electrical Schematic – Chiller Power Panel',                 plan:'2025-12-20', lastSub:'2026-05-05', status:'Commented',     due:'overdue',   pic:'ELEC'},
+  {no:9,  doc:'TCI-ENG-AC60-007',     title:'Electrical Load Schedule – N₂ Chiller',                     plan:'2025-12-20', lastSub:'2026-05-05', status:'Not Submitted', due:'overdue',   pic:'ELEC'},
+  {no:10, doc:'TCI-ENG-AC60-008',     title:'I/O List – Chiller Control System',                          plan:'2025-12-20', lastSub:'2026-04-15', status:'Commented',     due:'overdue',   pic:'INST'},
+  {no:11, doc:'TCI-ENG-AC60-009',     title:'Control Logic Diagram – Air Chiller',                        plan:'2025-12-20', lastSub:'2026-02-10', status:'Not Submitted', due:'overdue',   pic:'INST'},
+  {no:12, doc:'TCI-ENG-AC60-010',     title:'Instrument Datasheet – Temp & Pressure Transmitters',        plan:'2025-12-20', lastSub:'2026-03-31', status:'Commented',     due:'overdue',   pic:'INST'},
+  {no:13, doc:'TCI-ENG-AC60-011',     title:'Inspection & Test Plan – Air Chiller Fabrication',           plan:'2025-12-20', lastSub:'2025-12-22', status:'Commented',     due:'overdue',   pic:'OTH'},
+  {no:14, doc:'TCI-ENG-AC60-012',     title:'Operation Manual – N₂ Air Chiller',                         plan:'2026-05-06', lastSub:'2025-12-22', status:'Commented',     due:'due-soon',  pic:'MECH'},
+  {no:15, doc:'TCI-ENG-AC60-013',     title:'Maintenance Manual – Air Chiller System',                    plan:'2026-05-06', lastSub:null,          status:'Not Submitted', due:'due-soon',  pic:'MECH'},
+  {no:16, doc:'TCI-ENG-AC60-014',     title:'GA Drawing Evaporator',                                      plan:'2025-12-20', lastSub:'2026-03-16', status:'Approved',      due:'on-track',  pic:'MECH'},
+  {no:17, doc:'TCI-ENG-AC60-015',     title:'GA Drawing Condenser & Heat Exchanger',                      plan:'2025-12-20', lastSub:'2026-03-16', status:'Approved',      due:'on-track',  pic:'MECH'},
+  {no:18, doc:'TCI-ENG-AC60-016',     title:'GA Drawing Foundation / Structure Kit',                      plan:'2025-12-20', lastSub:'2026-03-31', status:'Commented',     due:'overdue',   pic:'MECH'},
+  {no:19, doc:'TCI-ENG-AC60-017',     title:'Detail Foundation Calculation',                              plan:'2025-12-20', lastSub:'2026-04-20', status:'Commented',     due:'overdue',   pic:'MECH'},
+  {no:20, doc:'TCI-ENG-AC60-018',     title:'Drawing Name Plate',                                         plan:'2026-05-01', lastSub:'2026-04-15', status:'Not Submitted', due:'overdue',   pic:'MECH'},
+  {no:21, doc:'TCI-ENG-AC60-019',     title:'Drawing Instrument Wiring Schematic',                        plan:'2025-12-20', lastSub:'2026-05-05', status:'Commented',     due:'overdue',   pic:'INST'},
+  {no:22, doc:'TCI-ENG-AC60-020',     title:'Drawing Cable Layout & Cable Schedule',                      plan:'2025-12-20', lastSub:'2026-05-05', status:'Not Submitted', due:'overdue',   pic:'ELEC'},
+  {no:23, doc:'TCI-ENG-AC60-021',     title:'Single Line Diagram',                                        plan:'2025-12-20', lastSub:'2026-05-05', status:'Commented',     due:'overdue',   pic:'ELEC'},
+  {no:24, doc:'TCI-ENG-AC60-022',     title:'Air Chiller Detail Spec & Process Description',              plan:'2025-12-20', lastSub:'2026-03-31', status:'Commented',     due:'overdue',   pic:'PROC'},
+  {no:25, doc:'TCI-ENG-AC60-023',     title:'Pressure Switch Panel Layout',                               plan:'2025-12-20', lastSub:null,          status:'Not Submitted', due:'overdue',   pic:'INST'},
+  {no:26, doc:'TCI-ENG-AC60-024',     title:'Control Panel Layout',                                       plan:'2025-12-20', lastSub:'2026-05-05', status:'Not Submitted', due:'overdue',   pic:'ELEC'},
+  {no:27, doc:'TCI-ENG-AC60-025',     title:'Instrument List',                                            plan:'2025-12-20', lastSub:'2026-05-05', status:'Commented',     due:'overdue',   pic:'INST'},
+  {no:28, doc:'TCI-ENG-AC60-026',     title:'Bill of Material (BOM)',                                     plan:'2025-12-25', lastSub:'2026-03-31', status:'Commented',     due:'overdue',   pic:'MECH'},
+  {no:29, doc:'TCI-ENG-AC60-027',     title:'Site Installation Procedures',                               plan:'2026-06-05', lastSub:'2025-12-22', status:'Commented',     due:'upcoming',  pic:'OTH'},
+  {no:30, doc:'TCI-ENG-AC60-028',     title:'O & M Manual Book',                                         plan:'2026-05-06', lastSub:null,          status:'Not Submitted', due:'due-soon',  pic:'MECH'},
+  {no:31, doc:'TCI-ENG-AC60-029',     title:'Troubleshooting Guide',                                     plan:'2026-05-06', lastSub:null,          status:'Not Submitted', due:'due-soon',  pic:'OTH'},
+  {no:32, doc:'TCI-ENG-AC60-030',     title:'Manufacture Catalogue – Equipment / Component',             plan:'2025-12-25', lastSub:null,          status:'Not Submitted', due:'overdue',   pic:'OTH'},
+  {no:33, doc:'TCI-ENG-AC60-031',     title:'Calibration Certificates from Manufacturer',                plan:'2026-05-06', lastSub:null,          status:'Not Submitted', due:'due-soon',  pic:'INST'},
+  {no:34, doc:'TCI-ENG-AC60-032',     title:'Recommended Spare Part List',                               plan:'2026-09-25', lastSub:null,          status:'Not Submitted', due:'upcoming',  pic:'MECH'},
+  {no:35, doc:'TCI-ENG-AC60-033',     title:'Purchase Order List',                                       plan:'2025-12-25', lastSub:'2026-04-30', status:'Information',   due:'on-track',  pic:'OTH'},
+  {no:36, doc:'TCI-ENG-AC60-034',     title:'Site Performance Test Procedure',                           plan:'2026-07-10', lastSub:null,          status:'Not Submitted', due:'upcoming',  pic:'OTH'},
+  {no:37, doc:'TCI-ENG-AC60-035',     title:'Shop Inspection Report',                                    plan:'2026-05-15', lastSub:null,          status:'Not Submitted', due:'due-soon',  pic:'OTH'},
+  {no:38, doc:'TCI-ENG-AC60-036',     title:'QA/QC Procedure',                                           plan:'2026-05-01', lastSub:'2026-05-05', status:'Information',   due:'on-track',  pic:'OTH'},
+  {no:39, doc:'TCI-ENG-AC60-037',     title:'Installation Procedure',                                    plan:'2026-06-01', lastSub:null,          status:'Not Submitted', due:'upcoming',  pic:'OTH'},
+  {no:40, doc:'TCI-ENG-AC60-038',     title:'Loading Data Chiller',                                      plan:'2026-06-01', lastSub:null,          status:'Not Submitted', due:'upcoming',  pic:'MECH'},
+  {no:41, doc:'TCI-ENG-AC60-039',     title:'Consumable List',                                           plan:'2026-06-01', lastSub:null,          status:'Not Submitted', due:'upcoming',  pic:'OTH'},
+];
+
+const picMeta = {
+  MECH: { label: 'Mechanical Engineer', color: '#39d3c8' },
+  PROC: { label: 'Process Engineer',    color: '#58a6ff' },
+  ELEC: { label: 'Electrical Engineer', color: '#e3b341' },
+  INST: { label: 'Instrument Engineer', color: '#bc8cff' },
+  OTH:  { label: 'Others',              color: '#8b949e' },
+};
+
+let currentFilter = 'all';
+let sortCol = 0, sortDir = 1;
+
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', (i===0&&t==='table')||(i===1&&t==='gantt')||(i===2&&t==='mom')));
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  if (t === 'gantt') { setTimeout(drawGantt, 50); drawProgress(); }
+}
+
+function statusBadge(s) {
+  const map = {'Approved':'approved','Commented':'commented','Information':'information','Not Submitted':'not-submitted'};
+  return `<span class="badge ${map[s]||'not-submitted'}">${s}</span>`;
+}
+function duePill(d) {
+  const map = {'overdue':['overdue','OVERDUE'],'due-soon':['due-soon','DUE SOON'],'on-track':['on-track','ON TRACK'],'upcoming':['upcoming','UPCOMING']};
+  const [cls,label] = map[d]||['upcoming','—'];
+  return `<span class="due-pill ${cls}"><span class="dot"></span>${label}</span>`;
+}
+function picBadge(p) {
+  return `<span class="pic-badge pic-${p}">${picMeta[p].label}</span>`;
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let data = records.filter(r => {
+    const ms = !q || r.title.toLowerCase().includes(q) || r.doc.toLowerCase().includes(q);
+    let mf = true;
+    if (currentFilter==='overdue')      mf = r.due==='overdue';
+    if (currentFilter==='duesoon')      mf = r.due==='due-soon';
+    if (currentFilter==='approved')     mf = r.status==='Approved';
+    if (currentFilter==='commented')    mf = r.status==='Commented';
+    if (currentFilter==='notsubmitted') mf = r.status==='Not Submitted';
+    if (['MECH','PROC','ELEC','INST','OTH'].includes(currentFilter)) mf = r.pic===currentFilter;
+    return ms && mf;
+  });
+  const keys = ['no','doc','title','plan','lastSub','status','due','pic'];
+  data.sort((a,b) => {
+    const av = String(a[keys[sortCol]]||''), bv = String(b[keys[sortCol]]||'');
+    return sortDir * av.localeCompare(bv, undefined, {numeric:true});
+  });
+  const tbody = document.getElementById('tableBody');
+  document.getElementById('rowCount').textContent = `Showing ${data.length} of ${records.length}`;
+  if (!data.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No documents match the current filter.</td></tr>'; return; }
+  const fmt = d => d ? d.replace(/(\d{4})-(\d{2})-(\d{2})/, (_,y,m,dd) => `${dd}-${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]}-${y}`) : '—';
+  tbody.innerHTML = data.map(r => {
+    const dc = r.due==='overdue'?'overdue-date':r.due==='due-soon'?'duesoon-date':'';
+    return `<tr><td class="no">${r.no}</td><td class="doc-id">${r.doc}</td><td class="title">${r.title}</td><td class="date ${dc}">${fmt(r.plan)}</td><td class="date">${fmt(r.lastSub)}</td><td>${statusBadge(r.status)}</td><td>${duePill(r.due)}</td><td>${picBadge(r.pic)}</td></tr>`;
+  }).join('');
+}
+
+function updateKPIs() {
+  document.getElementById('cnt-total').textContent    = records.length;
+  document.getElementById('cnt-overdue').textContent  = records.filter(r=>r.due==='overdue').length;
+  document.getElementById('cnt-duesoon').textContent  = records.filter(r=>r.due==='due-soon').length;
+  document.getElementById('cnt-approved').textContent = records.filter(r=>r.status==='Approved').length;
+  document.getElementById('cnt-commented').textContent= records.filter(r=>r.status==='Commented').length;
+}
+
+function filterKPI(f) {
+  currentFilter = f;
+  ['all','overdue','duesoon','approved','commented','notsubmitted','MECH','PROC','ELEC','INST'].forEach(k => {
+    const el = document.getElementById('btn-'+k);
+    if (el) el.classList.toggle('active', k===f);
+  });
+  applyFilters();
+}
+
+function sortTable(col) {
+  if (sortCol===col) sortDir*=-1; else { sortCol=col; sortDir=1; }
+  applyFilters();
+}
+
+// ── GANTT ──
+function drawGantt() {
+  const discFilter   = document.getElementById('ganttDisc').value;
+  const statusFilter = document.getElementById('ganttStatus').value;
+  let data = records.filter(r => {
+    let ok = discFilter==='all' || r.pic===discFilter;
+    if (statusFilter==='overdue')   ok = ok && r.due==='overdue';
+    if (statusFilter==='due-soon')  ok = ok && r.due==='due-soon';
+    if (statusFilter==='approved')  ok = ok && r.status==='Approved';
+    return ok;
+  });
+
+  const canvas = document.getElementById('ganttCanvas');
+  const ROW_H = 28, LABEL_W = 220, PAD = 16, HEADER_H = 40;
+  const totalH = HEADER_H + data.length * ROW_H + PAD * 2;
+  const W = Math.max(canvas.parentElement.clientWidth - 32, 700);
+  canvas.width = W;
+  canvas.height = totalH;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, totalH);
+
+  // date range
+  const today = new Date('2026-05-06');
+  const allDates = data.flatMap(r => [r.plan, r.lastSub].filter(Boolean).map(d=>new Date(d)));
+  allDates.push(new Date('2025-12-01'), new Date('2026-10-01'));
+  const minD = new Date(Math.min(...allDates));
+  const maxD = new Date(Math.max(...allDates));
+  minD.setDate(1);
+  maxD.setMonth(maxD.getMonth()+1, 1);
+  const totalMs = maxD - minD;
+  const chartW = W - LABEL_W - PAD;
+
+  function xOf(d) {
+    return LABEL_W + ((new Date(d) - minD) / totalMs) * chartW;
+  }
+
+  // Background grid
+  ctx.fillStyle = '#161b22';
+  ctx.fillRect(0, 0, W, totalH);
+
+  // Month headers + grid lines
+  const months = [];
+  let cur = new Date(minD);
+  while (cur < maxD) {
+    months.push(new Date(cur));
+    cur.setMonth(cur.getMonth()+1);
+  }
+  months.forEach((m, i) => {
+    const x = xOf(m);
+    const xNext = i+1<months.length ? xOf(months[i+1]) : LABEL_W+chartW;
+    ctx.fillStyle = i%2===0 ? '#0d1117' : '#12171f';
+    ctx.fillRect(x, HEADER_H, xNext-x, totalH-HEADER_H);
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10px IBM Plex Mono, monospace';
+    ctx.fillText(m.toLocaleString('default',{month:'short',year:'2-digit'}), x+4, HEADER_H-10);
+    ctx.strokeStyle = '#30363d';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(x, HEADER_H); ctx.lineTo(x, totalH); ctx.stroke();
+  });
+
+  // Today line
+  const tx = xOf(today);
+  ctx.strokeStyle = '#f85149';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(tx, HEADER_H); ctx.lineTo(tx, totalH); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f85149';
+  ctx.font = '9px IBM Plex Mono, monospace';
+  ctx.fillText('TODAY', tx+3, HEADER_H+10);
+
+  // Status → color map
+  const statusColor = {
+    'Approved': '#3fb950',
+    'Commented': '#f0883e',
+    'Information': '#58a6ff',
+    'Not Submitted': '#f85149',
+  };
+
+  data.forEach((r, i) => {
+    const y = HEADER_H + PAD + i * ROW_H;
+    const barY = y + 5;
+    const barH = ROW_H - 10;
+
+    // Row bg stripe on hover (static alternating)
+    if (i%2===0) { ctx.fillStyle = 'rgba(255,255,255,0.015)'; ctx.fillRect(0,y,W,ROW_H); }
+
+    // Label
+    ctx.fillStyle = '#e6edf3';
+    ctx.font = '11px IBM Plex Sans, sans-serif';
+    const shortTitle = r.title.length > 30 ? r.title.slice(0,28)+'…' : r.title;
+    ctx.fillText(shortTitle, 8, y + ROW_H/2 + 4);
+
+    // Discipline dot
+    ctx.fillStyle = picMeta[r.pic].color;
+    ctx.beginPath(); ctx.arc(LABEL_W-10, y+ROW_H/2, 4, 0, Math.PI*2); ctx.fill();
+
+    // Plan window bar (from project start 2025-12-01 to plan date)
+    const startX = xOf('2025-12-01');
+    const planX  = xOf(r.plan);
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.rect(startX, barY, Math.max(planX-startX,2), barH); ctx.fill(); ctx.stroke();
+
+    // Actual bar (project start → last submitted, or start→plan if not submitted)
+    const endX = r.lastSub ? xOf(r.lastSub) : planX;
+    const barColor = statusColor[r.status] || '#7d8590';
+    ctx.fillStyle = barColor + '99';
+    ctx.fillRect(Math.min(startX,planX), barY, Math.max(endX-startX,4), barH);
+
+    // Progress fill
+    ctx.fillStyle = barColor;
+    ctx.fillRect(Math.min(startX,planX), barY, Math.max(endX-startX,4), 3);
+
+    // Plan marker
+    ctx.strokeStyle = '#e3b341';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(planX, barY); ctx.lineTo(planX, barY+barH); ctx.stroke();
+
+    // No label on bar (too small)
+  });
+
+  // Label area separator
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(LABEL_W, 0); ctx.lineTo(LABEL_W, totalH); ctx.stroke();
+
+  // Header row separator
+  ctx.beginPath(); ctx.moveTo(0, HEADER_H); ctx.lineTo(W, HEADER_H); ctx.stroke();
+
+  // Column header
+  ctx.fillStyle = '#7d8590';
+  ctx.font = '10px IBM Plex Sans, sans-serif';
+  ctx.fillText('DOCUMENT', 8, HEADER_H-10);
+}
+
+function drawProgress() {
+  const container = document.getElementById('discProgress');
+  const discs = ['MECH','PROC','ELEC','INST','OTH'];
+  const barColors = { MECH:'#39d3c8', PROC:'#58a6ff', ELEC:'#e3b341', INST:'#bc8cff', OTH:'#8b949e' };
+  container.innerHTML = discs.map(d => {
+    const group = records.filter(r=>r.pic===d);
+    const approved = group.filter(r=>r.status==='Approved'||r.status==='Information').length;
+    const pct = group.length ? Math.round((approved/group.length)*100) : 0;
+    return `<div class="disc-row">
+      <div class="disc-name">${picMeta[d].label} <span style="color:var(--muted);font-size:10px;">(${group.length} docs)</span></div>
+      <div class="disc-bar-bg"><div class="disc-bar-fill" style="width:${pct}%;background:${barColors[d]}"></div></div>
+      <div class="disc-pct">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+updateKPIs();
+applyFilters();
+</script>
+</body>
+</html>
